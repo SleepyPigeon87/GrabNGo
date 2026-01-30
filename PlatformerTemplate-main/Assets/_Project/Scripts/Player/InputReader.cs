@@ -97,7 +97,8 @@ namespace Platformer.Player
         /// Useful for showing correct button prompts.
         /// </summary>
         public bool UsingGamepad { get; private set; }
-
+        public bool GrappleHeld { get; private set; }
+        public Vector2 AimInput { get; private set; }
         /*
          * ------------------------------------------------------------------------
          * INTERNAL STATE
@@ -107,7 +108,8 @@ namespace Platformer.Player
         // Input System action references
         private InputAction moveAction;
         private InputAction jumpAction;
-
+        private InputAction grappleAction;
+        private InputAction aimAction;  
         // Input buffering timers
         private float jumpBufferTimer;
 
@@ -149,6 +151,7 @@ namespace Platformer.Player
         {
             // Read and process movement input every frame
             ProcessMoveInput();
+            ProcessAimInput();
 
             // Tick down input buffers
             UpdateBufferTimers();
@@ -190,6 +193,8 @@ namespace Platformer.Player
 
             moveAction = playerMap.FindAction("Move");
             jumpAction = playerMap.FindAction("Jump");
+            grappleAction = playerMap.FindAction("Grapple");
+            aimAction = playerMap.FindAction("Aim");
 
             if (moveAction == null)
                 Debug.LogError("[InputReader] 'Move' action not found in Player map!", this);
@@ -204,12 +209,17 @@ namespace Platformer.Player
             // Enable actions so they receive input
             moveAction.Enable();
             jumpAction.Enable();
-
+            if (grappleAction != null)grappleAction.Enable();
+            if (aimAction != null)  aimAction.Enable();
             // Subscribe to jump button events
             // "performed" = button pressed, "canceled" = button released
             jumpAction.performed += OnJumpPerformed;
             jumpAction.canceled += OnJumpCanceled;
-
+            if (grappleAction != null)
+            {
+                grappleAction.performed += OnGrapplePerformed;
+                grappleAction.canceled += OnGrappleCanceled;
+            }
             // Track which device is being used
             InputSystem.onActionChange += OnActionChange;
         }
@@ -221,11 +231,18 @@ namespace Platformer.Player
             // Unsubscribe from events (prevents memory leaks)
             jumpAction.performed -= OnJumpPerformed;
             jumpAction.canceled -= OnJumpCanceled;
+            if (grappleAction != null)
+            {
+                grappleAction.performed -= OnGrapplePerformed;
+                grappleAction.canceled -= OnGrappleCanceled;
+            }
             InputSystem.onActionChange -= OnActionChange;
 
             // Disable actions
             moveAction.Disable();
             jumpAction.Disable();
+            if (grappleAction != null) grappleAction.Disable();
+            if (aimAction != null) aimAction.Disable();
         }
 
         private void CleanupInputActions()
@@ -265,7 +282,25 @@ namespace Platformer.Player
             // Apply deadzone and store result
             MoveInput = ApplyDeadzone(rawMoveInput);
         }
+        // --- NEW: Process Aiming ---
+        private void ProcessAimInput()
+        {
+            if (aimAction == null) return;
 
+            Vector2 raw = aimAction.ReadValue<Vector2>();
+
+            // If using Mouse, we need the raw screen position. 
+            // If using Controller, we need the direction vector.
+            if (UsingGamepad)
+            {
+                AimInput = ApplyDeadzone(raw);
+            }
+            else
+            {
+                // Pass raw mouse coordinates; logic will handle conversion later
+                AimInput = raw;
+            }
+        }
         /*
          * ------------------------------------------------------------------------
          * DEADZONE PROCESSING
@@ -342,6 +377,9 @@ namespace Platformer.Player
         {
             JumpHeld = false;
         }
+        // --- NEW: Grapple Callbacks ---
+        private void OnGrapplePerformed(InputAction.CallbackContext ctx) => GrappleHeld = true;
+        private void OnGrappleCanceled(InputAction.CallbackContext ctx) => GrappleHeld = false;
 
         /// <summary>
         /// Call this when you execute a jump to clear the buffer.
@@ -354,6 +392,7 @@ namespace Platformer.Player
 
         private void UpdateBufferTimers()
         {
+           
             // Count down buffer timers
             if (jumpBufferTimer > 0f)
             {

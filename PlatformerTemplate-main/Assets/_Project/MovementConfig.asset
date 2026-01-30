@@ -14,13 +14,13 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   maxSpeed: 8
   acceleration: 60
-  deceleration: 60
+  deceleration: 35
   turnAroundMultiplier: 1.5
   airControlMultiplier: 0.85
-  jumpForce: 14
-  jumpCutMultiplier: 0.5
+  jumpForce: 11
+  jumpCutMultiplier: 0.3
   coyoteTime: 0.12
-  gravityScale: 1
+  gravityScale: 2
   fallGravityMultiplier: 1.6
   groundCheckDistance: 0.1
   groundLayer:
