@@ -1,5 +1,6 @@
-using UnityEngine;
 using Platformer.Core;
+using Unity.VisualScripting.FullSerializer;
+using UnityEngine;
 
 namespace Platformer.Player
 {
@@ -50,6 +51,18 @@ namespace Platformer.Player
 
         private void Update()
         {
+            // --- NEW: PREVENT GRAPPLE WHILE CLIMBING ---
+            // If the player is physically climbing a wall, we shouldn't shoot the arm.
+            if (playerController.IsWallClimbing)
+            {
+                // If we were grappling, stop immediately so we can climb
+                if (IsGrappling) StopGrapple();
+
+                // Do not process any more grapple logic this frame
+                return;
+            }
+            // -------------------------------------------
+
             // 1. Handle Input
             if (inputReader.GrappleHeld && !IsGrappling)
             {
@@ -63,7 +76,8 @@ namespace Platformer.Player
             // 2. Handle Active Grapple Logic
             if (IsGrappling)
             {
-                HandleClimbing();
+                // We don't need HandleClimbing() here anymore because 
+                // Wall Climbing is now handled by PlayerController!
                 UpdateStamina(true);
                 DrawRope();
             }
@@ -147,6 +161,12 @@ namespace Platformer.Player
             lineRenderer.SetPosition(1, joint.connectedAnchor);
         }
 
+        public void DrainStamina(float amount)
+        {
+            CurrentStamina -= amount;
+            if (CurrentStamina < 0) CurrentStamina = 0;
+        }
+
         private Vector2 GetAimDirection()
         {
             if (inputReader.UsingGamepad)
@@ -162,5 +182,6 @@ namespace Platformer.Player
                 return (worldMousePos - transform.position).normalized;
             }
         }
+
     }
 }

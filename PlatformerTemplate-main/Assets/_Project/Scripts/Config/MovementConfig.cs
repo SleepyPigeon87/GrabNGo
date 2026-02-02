@@ -209,5 +209,41 @@ namespace Platformer.Config
 
         [Tooltip("Which layers count as ground. Set this in the Inspector!")]
         public LayerMask groundLayer;
+
+
+        /*
+         * ------------------------------------------------------------------------
+         * WALL MECHANICS
+         * ------------------------------------------------------------------------
+         *
+         * wallSlideSpeed: How fast the player slides down walls when touching them
+         *   0 = stuck to wall, can't slide
+         *   Higher values = more slippery
+         *
+         * wallJumpForce: Force applied when jumping off a wall
+         *   X = horizontal push away from wall
+         *   Y = vertical push up
+         *
+         * wallCheckDistance: How far to check for a wall
+         *   Similar to groundCheckDistance, but horizontal
+         *
+         * wallLayer: Which physics layers count as walls
+         */
+        [Header("Wall Mechanics")]
+        [Tooltip("How fast you slide down walls. 0 = stuck, high = slippery.")]
+        public float wallSlideSpeed = 2f;
+
+        [Tooltip("Force applied when jumping off a wall. X = push away, Y = push up.")]
+        public Vector2 wallJumpForce = new Vector2(15f, 20f);
+
+        [Tooltip("How far to check for a wall.")]
+        public float wallCheckDistance = 0.4f;
+
+        [Tooltip("Layer mask for what counts as a wall.")]
+        public LayerMask wallLayer;
+
+        [Tooltip("How fast you climb up/down when holding the Grab button.")]
+        public float wallClimbSpeed = 4f;
+
     }
 }

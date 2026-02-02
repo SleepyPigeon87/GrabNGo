@@ -62,7 +62,8 @@ namespace Platformer.Player
         [Tooltip("Transform at the player's feet for ground detection. " +
                  "Create an empty child GameObject at the bottom of the player.")]
         [SerializeField] private Transform groundCheckPoint;
-
+        [Header("Wall Check")]
+        [SerializeField] private Transform wallCheckPoint;
         /*
          * ------------------------------------------------------------------------
          * RUNTIME STATE
@@ -76,7 +77,12 @@ namespace Platformer.Player
         /// True if the player is touching ground.
         /// </summary>
         public bool IsGrounded { get; private set; }
+        public bool IsTouchingWall { get; private set; } 
+        public bool IsWallSliding { get; private set; }
+        public bool IsWallClimbing { get; private set; }
+        
 
+        private float wallJumpDirection;
         /// <summary>
         /// Current horizontal velocity.
         /// </summary>
@@ -96,7 +102,7 @@ namespace Platformer.Player
         // Component references (cached for performance)
         private Rigidbody2D rb;
         private InputReader inputReader;
-
+      
         // Coyote time tracking
         private float lastGroundedTime;
         private bool hasJumpedSinceGrounded;
@@ -169,7 +175,9 @@ namespace Platformer.Player
 
             // Order matters! Ground check first, then movement, then jump
             UpdateGroundedState();
+            UpdateWallState();
             UpdateHorizontalMovement();
+            UpdateWallMovement();
             UpdateJump();
             UpdateGravityScale();
         }
@@ -219,6 +227,45 @@ namespace Platformer.Player
             }
         }
 
+        private void UpdateWallState()
+        {
+            if (wallCheckPoint == null) return;
+
+            // 1. Detect Walls
+            bool rightWall = Physics2D.Raycast(wallCheckPoint.position, Vector2.right, config.wallCheckDistance, config.wallLayer);
+            bool leftWall = Physics2D.Raycast(wallCheckPoint.position, Vector2.left, config.wallCheckDistance, config.wallLayer);
+            IsTouchingWall = rightWall || leftWall;
+
+            // 2. Set Jump Direction (Opposite of wall)
+            if (rightWall) wallJumpDirection = -1f;
+            else if (leftWall) wallJumpDirection = 1f;
+            bool tryingToClimb = inputReader.MoveInput.y > 0.1f;
+            // 3. Wall Climbing Logic (NEW)
+            // If touching wall AND holding the Grab button (GrappleHeld)
+            if (IsTouchingWall && inputReader.GrappleHeld)
+            {
+                IsWallClimbing = true;
+                IsWallSliding = false;
+            }
+            if (IsTouchingWall && tryingToClimb)
+            {
+                IsWallClimbing = true;
+                IsWallSliding = false;
+            }
+            // 4. Wall Slide Logic
+            // If touching wall, NOT grabbing, falling down, and not on ground
+            else if (IsTouchingWall && !IsGrounded && rb.linearVelocity.y < 0)
+            {
+                IsWallClimbing = false;
+                IsWallSliding = true;
+            }
+            else
+            {
+                IsWallClimbing = false;
+                IsWallSliding = false;
+            }
+        }
+
         private bool CheckGrounded()
         {
             if (groundCheckPoint == null) return false;
@@ -232,6 +279,22 @@ namespace Platformer.Player
             );
 
             return hit.collider != null;
+        }
+
+        private void CheckWall()
+        {
+            if (wallCheckPoint == null) return;
+
+            // Check right
+            bool rightWall = Physics2D.Raycast(wallCheckPoint.position, Vector2.right, config.wallCheckDistance, config.wallLayer);
+            // Check left
+            bool leftWall = Physics2D.Raycast(wallCheckPoint.position, Vector2.left, config.wallCheckDistance, config.wallLayer);
+
+            IsTouchingWall = rightWall || leftWall;
+
+            // Determine which way to jump (if wall is on right, we jump left)
+            if (rightWall) wallJumpDirection = -1f;
+            else if (leftWall) wallJumpDirection = 1f;
         }
 
         /// <summary>
@@ -355,20 +418,31 @@ namespace Platformer.Player
 
         private void UpdateJump()
         {
-            // Check for buffered jump input
+            // 1. Normal Ground Jump
             if (inputReader.JumpBuffered && CanJump())
             {
                 ExecuteJump();
                 inputReader.ConsumeJumpBuffer();
-                return;
             }
-
-            // Variable jump height: cut velocity if jump released while rising
-            if (isJumping && !inputReader.JumpHeld && rb.linearVelocity.y > 0)
+            // 2. Wall Jump (NEW)
+            else if (inputReader.JumpBuffered && IsTouchingWall && !IsGrounded)
             {
-                // Cut the upward velocity
+                // Apply force: X = away from wall, Y = up
+                Vector2 force = new Vector2(
+                    config.wallJumpForce.x * wallJumpDirection,
+                    config.wallJumpForce.y
+                );
+
+                rb.linearVelocity = force; // Apply instantly for snappy feel
+                IsWallSliding = false; // Exit wall slide state
+                isJumping = true;
+                inputReader.ConsumeJumpBuffer();
+            }
+            // 3. Variable Jump Height
+            else if (isJumping && !inputReader.JumpHeld && rb.linearVelocity.y > 0 && !IsWallSliding)
+            {
                 rb.linearVelocity = new Vector2(rb.linearVelocity.x, rb.linearVelocity.y * config.jumpCutMultiplier);
-                isJumping = false;  // Only apply cut once
+                isJumping = false;
             }
         }
 
@@ -407,18 +481,54 @@ namespace Platformer.Player
 
         private void UpdateGravityScale()
         {
-            if (rb.linearVelocity.y < 0)
+            // 1. CLIMBING: No gravity (we control movement manually)
+            if (IsWallClimbing)
             {
-                // Falling - apply increased gravity
+                rb.gravityScale = 0f;
+            }
+            // 2. SLIDING: Slide down slowly
+            else if (IsWallSliding)
+            {
+                rb.linearVelocity = new Vector2(rb.linearVelocity.x, -config.wallSlideSpeed);
+            }
+            // 3. FALLING: High gravity
+            else if (rb.linearVelocity.y < 0)
+            {
                 rb.gravityScale = config.gravityScale * config.fallGravityMultiplier;
             }
+            // 4. NORMAL: Normal gravity
             else
             {
-                // Rising or grounded - normal gravity
                 rb.gravityScale = config.gravityScale;
             }
         }
 
+        private void UpdateWallMovement()
+        {
+            // Only run this if we are climbing
+            if (IsWallClimbing)
+            {
+                // Read Up/Down input
+                float climbSpeed = inputReader.MoveInput.y * config.wallClimbSpeed;
+
+                // Apply velocity directly (X stays 0 to stick to wall, Y moves up/down)
+                rb.linearVelocity = new Vector2(rb.linearVelocity.x, climbSpeed);
+
+                // DRAIN STAMINA
+                var grapple = GetComponent<GrappleController>();
+                if (grapple != null)
+                {
+                    grapple.DrainStamina(15f * Time.deltaTime); // Drain 15 per second
+
+                    // Fall if out of stamina
+                    if (grapple.CurrentStamina <= 0)
+                    {
+                        IsWallClimbing = false;
+                        IsWallSliding = true;
+                    }
+                }
+            }
+        }
         /*
          * ------------------------------------------------------------------------
          * DEBUG VISUALIZATION
@@ -427,17 +537,28 @@ namespace Platformer.Player
 
         private void OnDrawGizmosSelected()
         {
-            if (groundCheckPoint == null || config == null) return;
+            if (config == null) return;
 
-            // Draw ground check ray
-            Gizmos.color = IsGrounded ? Color.green : Color.red;
-            Gizmos.DrawLine(
-                groundCheckPoint.position,
-                groundCheckPoint.position + Vector3.down * config.groundCheckDistance
-            );
+            // 1. Draw Ground Check (Existing)
+            if (groundCheckPoint != null)
+            {
+                Gizmos.color = IsGrounded ? Color.green : Color.red;
+                Gizmos.DrawLine(groundCheckPoint.position, groundCheckPoint.position + Vector3.down * config.groundCheckDistance);
+                Gizmos.DrawWireSphere(groundCheckPoint.position, 0.05f);
+            }
 
-            // Draw ground check point
-            Gizmos.DrawWireSphere(groundCheckPoint.position, 0.05f);
+            // 2. Draw Wall Check (NEW - This is what you were missing!)
+            if (wallCheckPoint != null)
+            {
+                // Blue = Searching, Green = Wall Found
+                Gizmos.color = IsTouchingWall ? Color.green : Color.blue;
+
+                // Draw check to the Right
+                Gizmos.DrawLine(wallCheckPoint.position, wallCheckPoint.position + Vector3.right * config.wallCheckDistance);
+
+                // Draw check to the Left
+                Gizmos.DrawLine(wallCheckPoint.position, wallCheckPoint.position + Vector3.left * config.wallCheckDistance);
+            }
         }
     }
 }
