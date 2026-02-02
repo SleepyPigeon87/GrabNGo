@@ -26,9 +26,9 @@ MonoBehaviour:
   groundLayer:
     serializedVersion: 2
     m_Bits: 64
-  wallSlideSpeed: 2
+  wallSlideSpeed: 0.5
   wallJumpForce: {x: 10, y: 15}
-  wallCheckDistance: 0.4
+  wallCheckDistance: 1
   wallLayer:
     serializedVersion: 2
     m_Bits: 128
