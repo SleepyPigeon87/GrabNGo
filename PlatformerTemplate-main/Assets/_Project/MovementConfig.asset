@@ -12,22 +12,22 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d064145b92c4aad44b866515daaa00db, type: 3}
   m_Name: MovementConfig
   m_EditorClassIdentifier: 
-  maxSpeed: 8
-  acceleration: 90
-  deceleration: 35
-  turnAroundMultiplier: 1.5
+  maxSpeed: 15
+  acceleration: 15
+  deceleration: 45
+  turnAroundMultiplier: 3
   airControlMultiplier: 0.85
   jumpForce: 11
   jumpCutMultiplier: 0.3
-  coyoteTime: 0.12
+  coyoteTime: 0
   gravityScale: 2
   fallGravityMultiplier: 1.6
-  groundCheckDistance: 0.1
+  groundCheckDistance: 0.106
   groundLayer:
     serializedVersion: 2
     m_Bits: 64
-  wallSlideSpeed: 0.5
-  wallJumpForce: {x: 10, y: 15}
+  wallSlideSpeed: 2
+  wallJumpForce: {x: 20, y: 17}
   wallCheckDistance: 1
   wallLayer:
     serializedVersion: 2
