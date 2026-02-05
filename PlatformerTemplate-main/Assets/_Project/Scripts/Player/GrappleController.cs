@@ -12,8 +12,11 @@ namespace Platformer.Player
         [Tooltip("How far the arm can stretch (e.g. 3 player lengths ~ 6 units)")]
         public float maxGrappleDistance = 8f;
         public float climbSpeed = 5f;
+        public float winchSpeed = 5f;
+        public float MinRopeLength = 1f;
+        public float MaxRopeLength = 10f;
         public LayerMask grappleMask; // What can we grab? (Stalactites, Walls)
-
+        [SerializeField] private Transform firePoint;
         [Header("Stamina System")]
         public float maxStamina = 100f;
         public float grappleDrainRate = 15f; // Drain per second while holding
@@ -80,25 +83,65 @@ namespace Platformer.Player
                 // Wall Climbing is now handled by PlayerController!
                 UpdateStamina(true);
                 DrawRope();
+                HandleRopeLength();
             }
             else
             {
                 UpdateStamina(false);
-            }
+            } 
         }
+            private void HandleRopeLength()
+            {
+            // Read Up/Down input
+            float input = inputReader.MoveInput.y;
+
+                if (Mathf.Abs(input) > 0.1f)
+                {
+                // Calculate new distance
+                // Input > 0 (Up) means Shorten (subtract distance)
+                // Input < 0 (Down) means Lengthen (add distance)
+                float newDistance = joint.distance - (input * winchSpeed * Time.deltaTime);
+
+                // Clamp it so we don't break physics or go infinite
+                joint.distance = Mathf.Clamp(newDistance, MinRopeLength, MaxRopeLength);
+                }
+            }
+
+
 
         private void TryStartGrapple()
         {
+            // 1. Check Stamina first
             if (CurrentStamina <= 0) return;
 
-            Vector2 aimDir = GetAimDirection();
+            // 2. Calculate Direction
+            Vector2 direction = GetAimDirection();
 
-            // Raycast to find a grapple point
-            RaycastHit2D hit = Physics2D.Raycast(transform.position, aimDir, maxGrappleDistance, grappleMask);
+            // 3. Raycast (From the new FirePoint, not the center of player)
+            RaycastHit2D hit = Physics2D.Raycast(firePoint.position, direction, maxGrappleDistance, grappleMask);
 
+            // 4. Handle Result
             if (hit.collider != null)
             {
-                StartGrapple(hit.point);
+                // --- HIT! ---
+                // Stop any "Miss" animations running from a previous click
+                StopAllCoroutines();
+
+                // Physics: Connect the joint
+                joint.enabled = true;
+                joint.connectedAnchor = hit.point;
+                joint.distance = Vector2.Distance(firePoint.position, hit.point);
+
+                // Visuals: Draw the line instantly
+                lineRenderer.enabled = true;
+                lineRenderer.SetPosition(0, firePoint.position);
+                lineRenderer.SetPosition(1, hit.point);
+            }
+            else
+            {
+                // --- MISS! (The "Always Fire" visual) ---
+                StopAllCoroutines();
+                StartCoroutine(GrappleMissEffect(direction));
             }
         }
 
@@ -157,7 +200,7 @@ namespace Platformer.Player
         private void DrawRope()
         {
             if (!lineRenderer.enabled) return;
-            lineRenderer.SetPosition(0, transform.position);
+            lineRenderer.SetPosition(0, firePoint.position);
             lineRenderer.SetPosition(1, joint.connectedAnchor);
         }
 
@@ -179,8 +222,48 @@ namespace Platformer.Player
             {
                 // Mouse logic: Convert screen pixel to world position
                 Vector3 worldMousePos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
-                return (worldMousePos - transform.position).normalized;
+                return (worldMousePos - firePoint.position).normalized;
             }
+        }
+
+        private System.Collections.IEnumerator GrappleMissEffect(Vector2 direction)
+        {
+            // 1. Setup
+            lineRenderer.enabled = true;
+            Vector3 startPos = firePoint.position;
+            Vector3 targetPos = startPos + (Vector3)(direction * maxGrappleDistance);
+            Vector3 currentTipPos = startPos;
+
+            float shootSpeed = 40f; // Fast shot!
+
+            // 2. Shoot OUT
+            while (Vector3.Distance(currentTipPos, targetPos) > 0.1f)
+            {
+                // Update tip position
+                currentTipPos = Vector3.MoveTowards(currentTipPos, targetPos, shootSpeed * Time.deltaTime);
+
+                // Draw the line
+                lineRenderer.SetPosition(0, firePoint.position); // Always at hand
+                lineRenderer.SetPosition(1, currentTipPos);      // Moving tip
+
+                yield return null; // Wait for next frame
+            }
+
+            // 3. Retract BACK (Optional - removes the line quickly)
+            // You can comment this loop out if you just want it to vanish instantly
+            while (Vector3.Distance(currentTipPos, firePoint.position) > 0.5f)
+            {
+                // Retract faster than shooting
+                currentTipPos = Vector3.MoveTowards(currentTipPos, firePoint.position, shootSpeed * 2f * Time.deltaTime);
+
+                lineRenderer.SetPosition(0, firePoint.position);
+                lineRenderer.SetPosition(1, currentTipPos);
+
+                yield return null;
+            }
+
+            // 4. Cleanup
+            lineRenderer.enabled = false;
         }
 
     }

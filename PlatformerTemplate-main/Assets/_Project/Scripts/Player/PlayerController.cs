@@ -508,25 +508,33 @@ namespace Platformer.Player
             // Only run this if we are climbing
             if (IsWallClimbing)
             {
-                // Read Up/Down input
-                float climbSpeed = inputReader.MoveInput.y * config.wallClimbSpeed;
-
-                // Apply velocity directly (X stays 0 to stick to wall, Y moves up/down)
-                rb.linearVelocity = new Vector2(rb.linearVelocity.x, climbSpeed);
-
-                // DRAIN STAMINA
+                // 1. Setup Stamina Variables
                 var grapple = GetComponent<GrappleController>();
+                float staminaFactor = 1f; // Default to full speed if no grapple script found
+
                 if (grapple != null)
                 {
-                    grapple.DrainStamina(15f * Time.deltaTime); // Drain 15 per second
+                    // Drain Stamina
+                    grapple.DrainStamina(15f * Time.deltaTime);
+
+                    // --- THE SLUGGISH FEEL ---
+                    // Calculate Sluggishness: 100% speed when fresh, 50% speed when tired.
+                    float percent = grapple.CurrentStamina / grapple.maxStamina;
+                    staminaFactor = Mathf.Lerp(0.5f, 1f, percent);
+                    // -------------------------
 
                     // Fall if out of stamina
                     if (grapple.CurrentStamina <= 0)
                     {
                         IsWallClimbing = false;
                         IsWallSliding = true;
+                        return; // Stop processing movement immediately
                     }
                 }
+
+                // 2. Apply Movement (Using the calculated staminaFactor)
+                float climbSpeed = inputReader.MoveInput.y * config.wallClimbSpeed * staminaFactor;
+                rb.linearVelocity = new Vector2(rb.linearVelocity.x, climbSpeed);
             }
         }
         /*
