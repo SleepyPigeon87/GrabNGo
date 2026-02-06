@@ -28,7 +28,7 @@ MonoBehaviour:
     m_Bits: 64
   wallSlideSpeed: 2
   wallJumpForce: {x: 20, y: 17}
-  wallCheckDistance: 1
+  wallCheckDistance: 0.8
   wallLayer:
     serializedVersion: 2
     m_Bits: 128
