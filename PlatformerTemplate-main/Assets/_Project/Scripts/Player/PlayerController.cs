@@ -80,7 +80,8 @@ namespace Platformer.Player
         public bool IsTouchingWall { get; private set; } 
         public bool IsWallSliding { get; private set; }
         public bool IsWallClimbing { get; private set; }
-        
+        public bool IsWallJumping { get; private set; }
+
 
         private float wallJumpDirection;
         /// <summary>
@@ -109,6 +110,9 @@ namespace Platformer.Player
 
         // Jump state
         private bool isJumping;
+
+        //For animator.
+        private GrappleController grappleController;
 
         /*
          * ------------------------------------------------------------------------
@@ -148,8 +152,12 @@ namespace Platformer.Player
                 Debug.LogWarning("[PlayerController] Ground Check Point not assigned! " +
                                  "Create an empty GameObject at the player's feet and assign it.", this);
             }
+
+            grappleController = GetComponent<GrappleController>();
         }
 
+        public bool IsGrappling => grappleController != null && grappleController.IsGrappling;
+        
         /*
          * ------------------------------------------------------------------------
          * PHYSICS UPDATE
@@ -180,6 +188,13 @@ namespace Platformer.Player
             UpdateWallMovement();
             UpdateJump();
             UpdateGravityScale();
+        }
+
+        private void LateUpdate() {
+            //Resetting at the end for animator.
+            if (IsWallJumping) {
+                IsWallJumping = false;
+            }
         }
 
         /*
@@ -436,6 +451,7 @@ namespace Platformer.Player
                 rb.linearVelocity = force; // Apply instantly for snappy feel
                 IsWallSliding = false; // Exit wall slide state
                 isJumping = true;
+                IsWallJumping = true;
                 inputReader.ConsumeJumpBuffer();
             }
             // 3. Variable Jump Height

@@ -1,6 +1,7 @@
 using UnityEngine;
 using Platformer.Core;
 
+
 namespace Platformer.Player
 {
     /*
@@ -45,8 +46,10 @@ namespace Platformer.Player
      */
 
     [RequireComponent(typeof(Animator))]
-    public class PlayerAnimator : MonoBehaviour
-    {
+    public class PlayerAnimator : MonoBehaviour {
+
+        private bool wasGroundedLastFrame;
+
         /*
          * ------------------------------------------------------------------------
          * CACHED REFERENCES
@@ -71,6 +74,13 @@ namespace Platformer.Player
         private static readonly int IsGroundedHash = Animator.StringToHash("IsGrounded");
         private static readonly int IsJumpingHash = Animator.StringToHash("IsJumping");
         private static readonly int IsFallingHash = Animator.StringToHash("IsFalling");
+        //New thingies
+        private static readonly int IsClimbingHash = Animator.StringToHash("IsClimbing");
+        private static readonly int IsGrapplingHash = Animator.StringToHash("IsGrappling");
+        //Triggers are better for one time actions since they auto-reset themselves. 
+        private static readonly int LandingTriggerHash = Animator.StringToHash("Landing");
+        private static readonly int WallJumpTriggerHash = Animator.StringToHash("WallJump");
+
 
         /*
          * ------------------------------------------------------------------------
@@ -78,22 +88,21 @@ namespace Platformer.Player
          * ------------------------------------------------------------------------
          */
 
-        private void Awake()
-        {
+        private void Awake() {
             animator = GetComponent<Animator>();
         }
 
-        private void Start()
-        {
+        private void Start() {
             // Get PlayerController - could be on this object or a parent
             playerController = GetComponentInParent<PlayerController>();
 
-            if (playerController == null)
-            {
+
+            if (playerController == null) {
                 Debug.LogError("[PlayerAnimator] PlayerController not found! " +
                                "PlayerAnimator must be on the same GameObject as PlayerController " +
                                "or on a child object.", this);
             }
+         
         }
 
         /*
@@ -111,6 +120,9 @@ namespace Platformer.Player
 
             UpdateMovementParameters();
             UpdateStateParameters();
+            UpdateUniqueParameters();
+            CheckForLanding();
+            CheckForWallJump();
         }
 
         /// <summary>
@@ -141,6 +153,28 @@ namespace Platformer.Player
 
             animator.SetBool(IsJumpingHash, isRising);
             animator.SetBool(IsFallingHash, isFalling);
+        }
+
+        private void UpdateUniqueParameters() {
+            animator.SetBool(IsClimbingHash, playerController.IsWallClimbing);
+            animator.SetBool(IsGrapplingHash, playerController.IsGrappling);
+
+        }
+
+        //Trigger Methods
+        private void CheckForLanding() {
+            if (playerController.IsGrounded && !wasGroundedLastFrame) {
+                animator.SetTrigger(LandingTriggerHash);
+            }
+
+            wasGroundedLastFrame = playerController.IsGrounded;
+        }
+
+        private void CheckForWallJump() {
+            if (playerController.IsWallJumping) {
+                animator.SetTrigger(WallJumpTriggerHash);
+
+            }
         }
 
         /*

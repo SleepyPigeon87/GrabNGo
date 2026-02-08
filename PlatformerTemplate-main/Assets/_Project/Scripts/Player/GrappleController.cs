@@ -30,6 +30,7 @@ namespace Platformer.Player
         private Rigidbody2D rb;
         private InputReader inputReader;
         private PlayerController playerController;
+        private GrappleController grappleController;
 
         public float CurrentStamina { get; private set; }
         public bool IsGrappling => joint.enabled;
@@ -39,6 +40,7 @@ namespace Platformer.Player
             // Get dependencies
             inputReader = ServiceLocator.Get<InputReader>();
             playerController = GetComponent<PlayerController>();
+            grappleController = GetComponent<GrappleController>();
             rb = GetComponent<Rigidbody2D>();
             joint = GetComponent<DistanceJoint2D>();
 
