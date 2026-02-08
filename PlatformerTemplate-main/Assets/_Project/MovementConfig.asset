@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   maxSpeed: 15
   acceleration: 15
-  deceleration: 45
+  deceleration: 10
   turnAroundMultiplier: 3
   airControlMultiplier: 0.85
   jumpForce: 11

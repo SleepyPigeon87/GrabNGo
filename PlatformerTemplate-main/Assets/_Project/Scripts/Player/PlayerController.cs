@@ -64,6 +64,10 @@ namespace Platformer.Player
         [SerializeField] private Transform groundCheckPoint;
         [Header("Wall Check")]
         [SerializeField] private Transform wallCheckPoint;
+        [Header("Surface Settings")]
+        [Range(0f, 1f)]
+        [SerializeField] private float waterFriction = 0.2f; // 0.2 = 20% friction (Slippery)
+
         /*
          * ------------------------------------------------------------------------
          * RUNTIME STATE
@@ -346,28 +350,35 @@ namespace Platformer.Player
 
         private void UpdateHorizontalMovement()
         {
-            // Get input from InputReader (already processed with deadzone)
+            // 1. Standard Input & Target
             float inputX = inputReader.MoveInput.x;
-
-            // Calculate target velocity
             float targetVelocity = inputX * config.maxSpeed;
-
-            // Get current velocity
             float currentVelocity = rb.linearVelocity.x;
 
-            // Determine which rate to use
+            // 2. Calculate Standard Rate (Uses your existing helper method)
             float rate = CalculateMoveRate(inputX, currentVelocity);
 
-            // Apply air control multiplier if airborne
-            if (!IsGrounded)
+            // 3. Check for Water
+            // Raycast down to check if the floor is tagged "Water"
+            bool onWater = false;
+            RaycastHit2D hit = Physics2D.Raycast(transform.position, Vector2.down, 1.5f, config.groundLayer);
+
+            if (hit.collider != null && hit.collider.CompareTag("Water"))
+            {
+                onWater = true;
+            }
+            // 4. Apply Modifiers
+            if (onWater)
+            {
+                // Multiply the rate (acceleration/deceleration) by the friction factor.
+                rate *= waterFriction;
+            }
+            else if (!IsGrounded)
             {
                 rate *= config.airControlMultiplier;
             }
-
-            // Move toward target velocity
+            // 5. Move & Apply
             float newVelocity = Mathf.MoveTowards(currentVelocity, targetVelocity, rate * Time.fixedDeltaTime);
-
-            // Apply to rigidbody (preserve Y velocity)
             rb.linearVelocity = new Vector2(newVelocity, rb.linearVelocity.y);
         }
 
