@@ -157,7 +157,7 @@ namespace Platformer.Player
             bool isFalling = playerController.VerticalSpeed < -0.1f && !playerController.IsGrounded;
 
             squashGauge = -playerController.VerticalSpeed / 70;
-            Debug.Log(squashGauge);
+            //Debug.Log(squashGauge);
             spriteTransform.localScale = spriteScale + new Vector3(Mathf.Abs(playerController.HorizontalSpeed) / 70, squashGauge, 0);
 
             animator.SetBool(IsJumpingHash, isRising);

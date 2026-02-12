@@ -68,6 +68,12 @@ namespace Platformer.Player
         [Range(0f, 1f)]
         [SerializeField] private float waterFriction = 0.2f; // 0.2 = 20% friction (Slippery)
 
+        [Header("Visual Effects")]
+        [SerializeField] public ParticleSystem runningDustParticles;
+        [SerializeField] public GameObject landingDustParticles;
+        [SerializeField] public ParticleSystem jumpDustParticles;
+        [SerializeField] public ParticleSystem wallSlideDustParticles;
+
         /*
          * ------------------------------------------------------------------------
          * RUNTIME STATE
@@ -181,8 +187,7 @@ namespace Platformer.Player
          *   Physics/movement -> FixedUpdate (consistent behavior)
          */
 
-        private void FixedUpdate()
-        {
+        private void FixedUpdate() {
             if (config == null || inputReader == null) return;
 
             // Order matters! Ground check first, then movement, then jump
@@ -192,6 +197,11 @@ namespace Platformer.Player
             UpdateWallMovement();
             UpdateJump();
             UpdateGravityScale();
+        }
+
+        private void Update() {
+            UpdateVisualEffects();
+
         }
 
         private void LateUpdate() {
@@ -238,11 +248,18 @@ namespace Platformer.Player
                 lastGroundedTime = Time.time;
 
                 // Reset jump state when landing
-                if (!wasGrounded)
-                {
+                if (!wasGrounded) {
                     hasJumpedSinceGrounded = false;
                     isJumping = false;
+
+                    if (landingDustParticles != null) {
+                        landingDustParticles.SetActive(false);
+                        landingDustParticles.SetActive(true);
+                                
+                    }
+                    
                 }
+                
             }
         }
 
@@ -481,6 +498,14 @@ namespace Platformer.Player
             // Track jump state
             isJumping = true;
             hasJumpedSinceGrounded = true;
+
+            if (jumpDustParticles != null)
+                jumpDustParticles.Clear();
+                if (!jumpDustParticles.isPlaying){
+                    jumpDustParticles.Play();
+                } 
+            )
+
         }
 
         /*
@@ -595,5 +620,37 @@ namespace Platformer.Player
                 Gizmos.DrawLine(wallCheckPoint.position, wallCheckPoint.position + Vector3.left * config.wallCheckDistance);
             }
         }
+
+
+        //VFX CRAP
+        private void UpdateVisualEffects() {
+            // Runningman the dance (think) im so tired
+            if (runningDustParticles != null) {
+                bool isMoving = Mathf.Abs(HorizontalSpeed) > 0.1f;
+                bool shouldEmitRunDust = IsGrounded && isMoving;
+
+                if (shouldEmitRunDust) {
+                    if (!runningDustParticles.isPlaying) runningDustParticles.Play();
+                } else {
+                    if (runningDustParticles.isPlaying) runningDustParticles.Stop();
+                }
+            }
+
+            // Wall Slide 
+            if (wallSlideDustParticles != null) {
+                if (IsWallSliding) {
+                    if(!wallSlideDustParticles.isPlaying)
+                        wallSlideDustParticles.Play();
+                } else {
+                    wallSlideDustParticles.Stop();
+                }
+
+            }
+
+            
+
+        }
+
     }
+
 }
