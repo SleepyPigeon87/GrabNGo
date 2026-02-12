@@ -59,6 +59,10 @@ namespace Platformer.Player
         public Animator animator;
         private PlayerController playerController;
 
+        private float squashGauge;
+        private Vector3 spriteScale;
+        public Transform spriteTransform;
+
         /*
          * ------------------------------------------------------------------------
          * PARAMETER HASHES
@@ -90,6 +94,7 @@ namespace Platformer.Player
 
         private void Awake() {
             //animator = GetComponent<Animator>();
+            spriteScale = spriteTransform.localScale;
         }
 
         private void Start() {
@@ -121,7 +126,7 @@ namespace Platformer.Player
             UpdateMovementParameters();
             UpdateStateParameters();
             UpdateUniqueParameters();
-            CheckForLanding();
+            //CheckForLanding();
             CheckForWallJump();
         }
 
@@ -151,6 +156,10 @@ namespace Platformer.Player
             bool isRising = playerController.VerticalSpeed > 0.1f;
             bool isFalling = playerController.VerticalSpeed < -0.1f && !playerController.IsGrounded;
 
+            squashGauge = -playerController.VerticalSpeed / 70;
+            Debug.Log(squashGauge);
+            spriteTransform.localScale = spriteScale + new Vector3(Mathf.Abs(playerController.HorizontalSpeed) / 40, squashGauge, 0);
+
             animator.SetBool(IsJumpingHash, isRising);
             animator.SetBool(IsFallingHash, isFalling);
         }
@@ -161,14 +170,14 @@ namespace Platformer.Player
 
         }
 
-        //Trigger Methods
-        private void CheckForLanding() {
-            if (playerController.IsGrounded && !wasGroundedLastFrame) {
-                animator.SetTrigger(LandingTriggerHash);
-            }
+        ////Trigger Methods
+        //private void CheckForLanding() {
+        //    if (playerController.IsGrounded && !wasGroundedLastFrame) {
+        //        animator.SetTrigger(LandingTriggerHash);
+        //    }
 
-            wasGroundedLastFrame = playerController.IsGrounded;
-        }
+        //    wasGroundedLastFrame = playerController.IsGrounded;
+        //}
 
         private void CheckForWallJump() {
             if (playerController.IsWallJumping) {
