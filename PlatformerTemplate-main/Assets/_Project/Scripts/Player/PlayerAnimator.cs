@@ -56,7 +56,7 @@ namespace Platformer.Player
          * ------------------------------------------------------------------------
          */
 
-        private Animator animator;
+        public Animator animator;
         private PlayerController playerController;
 
         /*
@@ -89,7 +89,7 @@ namespace Platformer.Player
          */
 
         private void Awake() {
-            animator = GetComponent<Animator>();
+            //animator = GetComponent<Animator>();
         }
 
         private void Start() {
