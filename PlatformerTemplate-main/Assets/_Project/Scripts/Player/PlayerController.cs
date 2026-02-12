@@ -68,11 +68,15 @@ namespace Platformer.Player
         [Range(0f, 1f)]
         [SerializeField] private float waterFriction = 0.2f; // 0.2 = 20% friction (Slippery)
 
+        //Noticed that gameobjects are easier for trigger particles vs. continuous actions are better with PS
         [Header("Visual Effects")]
         [SerializeField] public ParticleSystem runningDustParticles;
         [SerializeField] public GameObject landingDustParticles;
-        [SerializeField] public ParticleSystem jumpDustParticles;
+        [SerializeField] public GameObject jumpDustParticles;
+        [SerializeField] public GameObject wallJumpDustParticles;
         [SerializeField] public ParticleSystem wallSlideDustParticles;
+        [SerializeField] public ParticleSystem climbDustParticles;
+
 
         /*
          * ------------------------------------------------------------------------
@@ -300,6 +304,12 @@ namespace Platformer.Player
                 IsWallClimbing = false;
                 IsWallSliding = false;
             }
+
+            if (!IsWallClimbing) {
+                climbDustParticles.Stop();
+
+            }
+
         }
 
         private bool CheckGrounded()
@@ -480,6 +490,10 @@ namespace Platformer.Player
                 IsWallSliding = false; // Exit wall slide state
                 isJumping = true;
                 IsWallJumping = true;
+                jumpDustParticles.SetActive(false);
+                jumpDustParticles.SetActive(true);
+                climbDustParticles.Stop();
+
                 inputReader.ConsumeJumpBuffer();
             }
             // 3. Variable Jump Height
@@ -490,8 +504,7 @@ namespace Platformer.Player
             }
         }
 
-        private void ExecuteJump()
-        {
+        private void ExecuteJump() {
             // Set vertical velocity directly (not AddForce)
             rb.linearVelocity = new Vector2(rb.linearVelocity.x, config.jumpForce);
 
@@ -499,13 +512,11 @@ namespace Platformer.Player
             isJumping = true;
             hasJumpedSinceGrounded = true;
 
-            if (jumpDustParticles != null)
-                jumpDustParticles.Clear();
-                if (!jumpDustParticles.isPlaying){
-                    jumpDustParticles.Play();
-                } 
-            )
+            if (jumpDustParticles != null) {
+                jumpDustParticles.SetActive(false);
+                jumpDustParticles.SetActive(true);
 
+            }
         }
 
         /*
@@ -587,6 +598,17 @@ namespace Platformer.Player
                 // 2. Apply Movement (Using the calculated staminaFactor)
                 float climbSpeed = inputReader.MoveInput.y * config.wallClimbSpeed * staminaFactor;
                 rb.linearVelocity = new Vector2(rb.linearVelocity.x, climbSpeed);
+                if (climbDustParticles != null) {
+                    if (IsWallClimbing) {
+                        if (!climbDustParticles.isPlaying) {
+                            climbDustParticles.Play();
+                        }
+                    } else {
+                        climbDustParticles.Stop();
+                    }
+
+                }
+
             }
         }
         /*
