@@ -158,7 +158,7 @@ namespace Platformer.Player
 
             squashGauge = -playerController.VerticalSpeed / 70;
             Debug.Log(squashGauge);
-            spriteTransform.localScale = spriteScale + new Vector3(Mathf.Abs(playerController.HorizontalSpeed) / 40, squashGauge, 0);
+            spriteTransform.localScale = spriteScale + new Vector3(Mathf.Abs(playerController.HorizontalSpeed) / 70, squashGauge, 0);
 
             animator.SetBool(IsJumpingHash, isRising);
             animator.SetBool(IsFallingHash, isFalling);
